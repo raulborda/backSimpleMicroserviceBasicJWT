@@ -197,11 +197,3 @@ Respuesta:
   * Configurar HTTPS
   * Almacenar credenciales en un sistema seguro
   * Implementar medidas adicionales de seguridad para el microservicio interno
-
-## Mejoras Futuras
-
-* Implementar una base de datos para almacenar usuarios y credenciales
-* Añadir roles de usuario y permisos
-* Implementar renovación de tokens
-* Añadir pruebas automatizadas
-* Agregar más operaciones matemáticas
