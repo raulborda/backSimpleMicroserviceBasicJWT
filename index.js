@@ -66,7 +66,8 @@ app.get('/info', verifyToken, (req, res) => {
     endpoints: [
       { path: '/login', method: 'POST', description: 'Autenticación de usuario y generación de token' },
       { path: '/sum', method: 'GET', description: 'Obtiene dos números aleatorios y devuelve su suma' },
-      { path: '/info', method: 'GET', description: 'Información sobre la API' }
+      { path: '/info', method: 'GET', description: 'Información sobre la API' },
+      { path: '/health', method: 'GET', description: 'Información sobre la salud de la API' }
     ]
   });
 });
