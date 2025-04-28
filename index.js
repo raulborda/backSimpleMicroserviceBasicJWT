@@ -2,62 +2,76 @@ const express = require('express');
 const axios = require('axios');
 require('dotenv').config();
 
-const app = express();
-const PORT = process.env.PORT;
+const { verifyToken, generateToken, authenticateUser } = require('./auth');
 
+const app = express();
+const PORT = process.env.PORT || 6000;
+const NUM_SERVICE_URL = process.env.NUM_SERVICE_URL;
+
+// Middleware
 app.use(express.json());
 
-const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET;
+// Middleware de registro (logging)
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
 
-// Verificar el token JWT
-const verifyToken = (req, res, next) => {
-  const authHeader = req.headers.authorization;
+// Manejador global de errores
+app.use((err, req, res, next) => {
+  console.error('Error en la aplicación:', err);
+  res.status(500).json({ error: 'Error interno del servidor' });
+});
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Token no proporcionado' });
-  }
-
-  const token = authHeader.split(' ')[1];
-
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(401).json({ error: 'Token inválido' });
-    }
-    req.user = decoded;
-    next();
-  });
-};
-
-//Genera Token
-const generateToken = (user) => {
-  return jwt.sign(user, JWT_SECRET, { expiresIn: '1h' });
-};
-
-app.post('/login', (req, res) => {
-  const { username, password } = req.body;
-  //Lógica de user y pass
-  if (username === 'raul' && password === '1234') {
-    const token = generateToken({ username });
-    res.json({ token }); //Devuelve token con 1h. de validez
-  } else {
-    res.status(401).json({ error: 'Credenciales incorrectas' });
+// Rutas
+app.post('/login', authenticateUser, (req, res) => {
+  try {
+    const token = generateToken({ username: req.user.username });
+    res.json({ 
+      token,
+      message: 'Autenticación exitosa',
+      expiresIn: '1h' 
+    });
+  } catch (error) {
+    console.error('Error en login:', error);
+    res.status(500).json({ error: 'Error al generar el token' });
   }
 });
 
 app.get('/sum', verifyToken, async (req, res) => {
   try {
-
-    const { data: { num1, num2 } } = await axios.get('http://localhost:6001/random');
+    // Realizar solicitud al microservicio de números
+    const response = await axios.get(NUM_SERVICE_URL);
+    const { num1, num2 } = response.data;
+    
     const suma = num1 + num2;
-    res.json({ suma });
-
+    
+    res.json({ 
+      result: suma,
+      operation: `${num1} + ${num2}`,
+      user: req.user.username,
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error al sumar los números' });
+    console.error('Error al obtener números aleatorios:', error);
+    res.status(500).json({ error: 'Error al realizar la operación de suma' });
   }
 });
 
+// Endpoint de información
+app.get('/info', verifyToken, (req, res) => {
+  res.json({
+    service: 'API de suma con autenticación JWT',
+    user: req.user.username,
+    endpoints: [
+      { path: '/login', method: 'POST', description: 'Autenticación de usuario y generación de token' },
+      { path: '/sum', method: 'GET', description: 'Obtiene dos números aleatorios y devuelve su suma' },
+      { path: '/info', method: 'GET', description: 'Información sobre la API' }
+    ]
+  });
+});
+
+// Iniciar el servidor
 app.listen(PORT, () => {
-  console.log(`Servidor de suma corriendo en http://localhost:${PORT}`);
+  console.log(`Servidor API corriendo en http://localhost:${PORT}`);
 });
